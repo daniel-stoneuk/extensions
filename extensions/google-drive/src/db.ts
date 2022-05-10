@@ -1,7 +1,6 @@
 import { environment, getPreferenceValues, LocalStorage, showToast, Toast } from "@raycast/api";
-import { Entry } from "fast-glob";
-import { existsSync, readFileSync, writeFileSync } from "fs";
-import { join } from "path";
+import { existsSync, lstatSync, readFileSync, writeFileSync } from "fs";
+import { basename, join } from "path";
 import { useEffect, useState } from "react";
 import initSqlJs, { Database } from "sql.js";
 
@@ -209,24 +208,21 @@ const listFilesAndInsertIntoDb = async (db: Database, toast: Toast): Promise<voi
   }
 
   let filesIndexed = 0;
-  for await (const file of driveFileStream({ stats: true })) {
-    const { name, path, stats } = file as unknown as Entry;
-
-    if (stats === undefined) {
-      continue;
-    }
-
+  for await (const filePath of driveFileStream()) {
     filesIndexed += 1;
-
     updateToastMessage(`Indexing: ${Math.round((filesIndexed / totalFiles) * 100)}% (${filesIndexed}/${totalFiles})`);
 
+    const fileStats = lstatSync(filePath);
+
+    const path = filePath.toString();
+
     insertFile(db, {
-      name,
-      path,
-      displayPath: displayPath(path),
-      fileSizeFormatted: formatBytes(stats.size > 0 ? stats.size : 0),
-      createdAt: (stats.birthtime ? stats.birthtime : new Date()).toISOString(),
-      updatedAt: (stats.mtime ? stats.mtime : new Date()).toISOString(),
+      name: basename(path),
+      path: path,
+      displayPath: displayPath(filePath),
+      fileSizeFormatted: formatBytes(fileStats.size > 0 ? fileStats.size : 0),
+      createdAt: (fileStats.birthtime ? fileStats.birthtime : new Date()).toISOString(),
+      updatedAt: (fileStats.mtime ? fileStats.mtime : new Date()).toISOString(),
       favorite: false,
     });
   }

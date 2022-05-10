@@ -151,8 +151,7 @@ export const filePreview = async (file: FileInfo | null, controller: AbortContro
   }
 };
 
-type DriveFileStreamOptions = { stats?: boolean };
-export const driveFileStream = ({ stats = false }: DriveFileStreamOptions = {}) => {
+export const driveFileStream = () => {
   const driveRootPath = getDriveRootPath();
   const preferences = getPreferenceValues<Preferences>();
 
@@ -161,10 +160,9 @@ export const driveFileStream = ({ stats = false }: DriveFileStreamOptions = {}) 
     ignore: excludePaths,
     dot: true,
     suppressErrors: true,
-    objectMode: true,
+    absolute: true,
     onlyFiles: !preferences.shouldShowDirectories,
     markDirectories: false,
-    stats,
   });
 };
 
