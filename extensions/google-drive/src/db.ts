@@ -222,7 +222,11 @@ const listFilesAndInsertIntoDb = async (db: Database, toast: Toast): Promise<voi
       const realPath = realpathSync(path).replace(driveMountPath, drivePath);
       filesIndexed += 1;
 
-      updateToastMessage(`Indexing: ${Math.round((filesIndexed / totalFiles) * 100)}% (${filesIndexed}/${totalFiles})`);
+      updateToastMessage(
+        filesIndexed > totalFiles
+          ? `Indexing shortcuts. This might take a little longer.`
+          : `Indexing: ${Math.round((filesIndexed / totalFiles) * 100)}% (${filesIndexed}/${totalFiles})`
+      );
 
       insertFile(db, {
         name,
