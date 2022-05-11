@@ -224,7 +224,7 @@ const listFilesAndInsertIntoDb = async (db: Database, toast: Toast): Promise<voi
 
       updateToastMessage(
         filesIndexed > totalFiles
-          ? `Indexing shortcuts. This might take a little longer.`
+          ? `Indexing shortcuts. Total files: ${filesIndexed}.`
           : `Indexing: ${Math.round((filesIndexed / totalFiles) * 100)}% (${filesIndexed}/${totalFiles})`
       );
 

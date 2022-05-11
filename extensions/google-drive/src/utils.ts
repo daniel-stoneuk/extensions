@@ -6,7 +6,6 @@ import { homedir } from "os";
 import { environment, getPreferenceValues, showToast, Toast } from "@raycast/api";
 import { Fzf } from "fzf";
 import fg from "fast-glob";
-
 import {
   DEFAULT_FILE_PREVIEW_IMAGE_PATH,
   DEFAULT_FOLDER_PREVIEW_IMAGE_PATH,
