@@ -212,34 +212,28 @@ const listFilesAndInsertIntoDb = async (db: Database, toast: Toast): Promise<voi
 
   let filesIndexed = 0;
   for await (const file of driveFileStream({ stats: true })) {
-    const { name, path, stats } = file as unknown as Entry;
+    const { name, path, stats, realPath } = file as unknown as Entry;
 
     if (stats === undefined) {
       continue;
     }
+    filesIndexed += 1;
 
-    try {
-      const realPath = realpathSync(path).replace(driveMountPath, drivePath);
-      filesIndexed += 1;
+    updateToastMessage(
+      filesIndexed > totalFiles
+        ? `Indexing shortcuts. Total files: ${filesIndexed}.`
+        : `Indexing: ${Math.round((filesIndexed / totalFiles) * 100)}% (${filesIndexed}/${totalFiles})`
+    );
 
-      updateToastMessage(
-        filesIndexed > totalFiles
-          ? `Indexing shortcuts. Total files: ${filesIndexed}.`
-          : `Indexing: ${Math.round((filesIndexed / totalFiles) * 100)}% (${filesIndexed}/${totalFiles})`
-      );
-
-      insertFile(db, {
-        name,
-        path: realPath,
-        displayPath: displayPath(path),
-        fileSizeFormatted: formatBytes(stats.size > 0 ? stats.size : 0),
-        createdAt: (stats.birthtime ? stats.birthtime : new Date()).toISOString(),
-        updatedAt: (stats.mtime ? stats.mtime : new Date()).toISOString(),
-        favorite: false,
-      });
-    } catch (error) {
-      // Ignore this file
-    }
+    insertFile(db, {
+      name,
+      path: realPath.replace(driveMountPath, drivePath),
+      displayPath: displayPath(path),
+      fileSizeFormatted: formatBytes(stats.size > 0 ? stats.size : 0),
+      createdAt: (stats.birthtime ? stats.birthtime : new Date()).toISOString(),
+      updatedAt: (stats.mtime ? stats.mtime : new Date()).toISOString(),
+      favorite: false,
+    });
   }
 };
 

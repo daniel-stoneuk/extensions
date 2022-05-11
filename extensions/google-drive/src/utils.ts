@@ -5,7 +5,7 @@ import { basename, dirname, extname, join, resolve } from "path";
 import { homedir } from "os";
 import { environment, getPreferenceValues, showToast, Toast } from "@raycast/api";
 import { Fzf } from "fzf";
-import fg from "fast-glob";
+import fg, { Entry } from "fast-glob";
 import {
   DEFAULT_FILE_PREVIEW_IMAGE_PATH,
   DEFAULT_FOLDER_PREVIEW_IMAGE_PATH,
@@ -16,6 +16,7 @@ import {
   TMP_FILE_PREVIEWS_PATH,
 } from "./constants";
 import { FileInfo, Preferences } from "./types";
+import { Transform } from "stream";
 
 export const log = (type: "debug" | "error", ...args: unknown[]) => {
   if (environment.isDevelopment) type === "error" ? console.error(...args) : console.log(...args);
@@ -166,8 +167,21 @@ export const driveFileStream = ({ stats = false }: DriveFileStreamOptions = {}) 
   const driveRootPath = getDriveRootPath();
   const preferences = getPreferenceValues<Preferences>();
 
+  const realPath = new Transform({
+    objectMode: true,
+    transform: (chunk: Entry, encoding, callback) => {
+      try {
+        chunk.realPath = realpathSync(chunk.path);
+        callback(null, chunk);
+      } catch (error) {
+        // NO-OP
+        callback(null, null);
+      }
+    },
+  });
+
   const excludePaths = getExcludePaths().concat(IGNORED_GLOBS);
-  return fg.stream([join(driveRootPath, "**")], {
+  const stream = fg.stream([join(driveRootPath, "**")], {
     ignore: excludePaths,
     dot: true,
     suppressErrors: true,
@@ -176,6 +190,10 @@ export const driveFileStream = ({ stats = false }: DriveFileStreamOptions = {}) 
     markDirectories: false,
     stats,
   });
+  if (stats) {
+    return stream.pipe(realPath);
+  }
+  return stream;
 };
 
 export const throttledUpdateToastMessage = ({ toast, interval }: { toast: Toast; interval: number }) => {
