@@ -171,7 +171,7 @@ export const driveFileStream = ({ stats = false }: DriveFileStreamOptions = {}) 
     objectMode: true,
     transform: (chunk: Entry, encoding, callback) => {
       try {
-        chunk.realPath = realpathSync(chunk.path);
+        chunk.realPath = realpathSync.native(chunk.path);
         callback(null, chunk);
       } catch (error) {
         // NO-OP
