@@ -1,7 +1,7 @@
 import { exec } from "child_process";
 import util from "util";
-import fs, { accessSync, existsSync, mkdirSync, PathLike, readdirSync, rm, rmSync, statSync } from "fs";
-import { extname, join, resolve } from "path";
+import fs, { accessSync, existsSync, mkdirSync, PathLike, readdirSync, realpathSync, rm, rmSync, statSync } from "fs";
+import { basename, dirname, extname, join, resolve } from "path";
 import { homedir } from "os";
 import { environment, getPreferenceValues, showToast, Toast } from "@raycast/api";
 import { Fzf } from "fzf";
@@ -45,6 +45,17 @@ export const getDriveRootPath = (): string => {
 
   return resolve(preferences.googleDriveRootPath.trim().replace("~", homedir()));
 };
+export const getDriveMountPath = (): [string, string] => {
+  let drivePath = getDriveRootPath();
+  let mountPath = realpathSync(drivePath);
+
+  while (basename(drivePath) === basename(mountPath)) {
+    drivePath = dirname(drivePath);
+    mountPath = dirname(mountPath);
+  }
+  return [mountPath, drivePath];
+};
+
 export const getExcludePaths = (): Array<string> => {
   const preferences = getPreferenceValues<Preferences>();
   return preferences.excludePaths

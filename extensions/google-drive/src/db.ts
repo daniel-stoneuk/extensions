@@ -1,6 +1,6 @@
 import { environment, getPreferenceValues, LocalStorage, showToast, Toast } from "@raycast/api";
 import { Entry } from "fast-glob";
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, realpathSync, writeFileSync } from "fs";
 import { join } from "path";
 import { useEffect, useState } from "react";
 import initSqlJs, { Database } from "sql.js";
@@ -22,6 +22,7 @@ import {
   throttledUpdateToastMessage,
   driveFileStream,
   log,
+  getDriveMountPath,
 } from "./utils";
 
 export const filesLastIndexedAt = async () => {
@@ -200,6 +201,7 @@ export const insertFile = (
 
 const listFilesAndInsertIntoDb = async (db: Database, toast: Toast): Promise<void> => {
   const updateToastMessage = throttledUpdateToastMessage({ toast, interval: TOAST_UPDATE_INTERVAL });
+  const [driveMountPath, drivePath] = getDriveMountPath();
 
   let totalFiles = 0;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -216,19 +218,24 @@ const listFilesAndInsertIntoDb = async (db: Database, toast: Toast): Promise<voi
       continue;
     }
 
-    filesIndexed += 1;
+    try {
+      const realPath = realpathSync(path).replace(driveMountPath, drivePath);
+      filesIndexed += 1;
 
-    updateToastMessage(`Indexing: ${Math.round((filesIndexed / totalFiles) * 100)}% (${filesIndexed}/${totalFiles})`);
+      updateToastMessage(`Indexing: ${Math.round((filesIndexed / totalFiles) * 100)}% (${filesIndexed}/${totalFiles})`);
 
-    insertFile(db, {
-      name,
-      path,
-      displayPath: displayPath(path),
-      fileSizeFormatted: formatBytes(stats.size > 0 ? stats.size : 0),
-      createdAt: (stats.birthtime ? stats.birthtime : new Date()).toISOString(),
-      updatedAt: (stats.mtime ? stats.mtime : new Date()).toISOString(),
-      favorite: false,
-    });
+      insertFile(db, {
+        name,
+        path: realPath,
+        displayPath: displayPath(path),
+        fileSizeFormatted: formatBytes(stats.size > 0 ? stats.size : 0),
+        createdAt: (stats.birthtime ? stats.birthtime : new Date()).toISOString(),
+        updatedAt: (stats.mtime ? stats.mtime : new Date()).toISOString(),
+        favorite: false,
+      });
+    } catch (error) {
+      // Ignore this file
+    }
   }
 };
 
