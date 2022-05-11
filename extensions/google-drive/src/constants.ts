@@ -7,7 +7,6 @@ export const IGNORED_GLOBS = [
   "**/bower_components",
   "**/.git",
   "**/tmp",
-  "**/._*",
   "**/.DS_Store",
   "**/.Trashes",
   "**/.VolumeIcon.icns",
