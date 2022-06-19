@@ -15,7 +15,7 @@ import {
   NON_PREVIEWABLE_EXTENSIONS,
   TMP_FILE_PREVIEWS_PATH,
 } from "./constants";
-import { FileInfo, Preferences } from "./types";
+import { EntryWithRealPath, FileInfo, Preferences } from "./types";
 import { Transform } from "stream";
 
 export const log = (type: "debug" | "error", ...args: unknown[]) => {
@@ -89,7 +89,7 @@ const filePreviewPath = async (file: FileInfo, controller: AbortController): Pro
     try {
       await execAsync(`qlmanage -t -s 256 ${escapePath(file.path)} -o ${TMP_FILE_PREVIEWS_PATH}`, {
         signal: controller.signal,
-        timeout: 2000 /* milliseconds */,
+        timeout: 4000 /* milliseconds */,
         killSignal: "SIGKILL",
       });
     } catch (e) {
@@ -169,7 +169,7 @@ export const driveFileStream = ({ stats = false }: DriveFileStreamOptions = {}) 
 
   const realPath = new Transform({
     objectMode: true,
-    transform: (chunk: Entry, encoding, callback) => {
+    transform: (chunk: EntryWithRealPath, encoding, callback) => {
       try {
         chunk.realPath = realpathSync.native(chunk.path);
         callback(null, chunk);

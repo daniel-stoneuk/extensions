@@ -1,6 +1,6 @@
 import { environment, getPreferenceValues, LocalStorage, showToast, Toast } from "@raycast/api";
 import { Entry } from "fast-glob";
-import { existsSync, readFileSync, realpathSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { useEffect, useState } from "react";
 import initSqlJs, { Database } from "sql.js";
@@ -12,7 +12,7 @@ import {
   MAX_RESULTS_WITH_SEARCH_TEXT,
   TOAST_UPDATE_INTERVAL,
 } from "./constants";
-import { FileInfo, Preferences } from "./types";
+import { EntryWithRealPath, FileInfo, Preferences } from "./types";
 import {
   clearAllFilePreviewsCache,
   formatBytes,
@@ -212,7 +212,7 @@ const listFilesAndInsertIntoDb = async (db: Database, toast: Toast): Promise<voi
 
   let filesIndexed = 0;
   for await (const file of driveFileStream({ stats: true })) {
-    const { name, path, stats, realPath } = file as unknown as Entry;
+    const { name, path, stats, realPath } = file as unknown as EntryWithRealPath;
 
     if (stats === undefined) {
       continue;
@@ -225,15 +225,24 @@ const listFilesAndInsertIntoDb = async (db: Database, toast: Toast): Promise<voi
         : `Indexing: ${Math.round((filesIndexed / totalFiles) * 100)}% (${filesIndexed}/${totalFiles})`
     );
 
-    insertFile(db, {
-      name,
-      path: realPath.replace(driveMountPath, drivePath),
-      displayPath: displayPath(path),
-      fileSizeFormatted: formatBytes(stats.size > 0 ? stats.size : 0),
-      createdAt: (stats.birthtime ? stats.birthtime : new Date()).toISOString(),
-      updatedAt: (stats.mtime ? stats.mtime : new Date()).toISOString(),
-      favorite: false,
-    });
+    try {
+      insertFile(db, {
+        name,
+        path: realPath.replace(driveMountPath, drivePath),
+        displayPath: displayPath(path),
+        fileSizeFormatted: formatBytes(stats.size > 0 ? stats.size : 0),
+        createdAt: (stats.birthtime ? stats.birthtime : new Date()).toISOString(),
+        updatedAt: (stats.mtime ? stats.mtime : new Date()).toISOString(),
+        favorite: false,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === "UNIQUE constraint failed: files.path") {
+          continue;
+        }
+      }
+      throw error;
+    }
   }
 };
 
