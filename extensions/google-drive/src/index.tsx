@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, createContext, useContext } from "rea
 import { ActionPanel, List, Action, Icon, showToast, Toast, Color, openExtensionPreferences } from "@raycast/api";
 import { existsSync } from "fs";
 import { dirname } from "path";
-import { useDebounce, useDebouncedCallback } from "use-debounce";
+import { useDebouncedCallback } from "use-debounce";
 
 import { FileInfo } from "./types";
 import { indexFiles, filesLastIndexedAt, queryFiles, useDb, toggleFavorite, queryFavoriteFiles } from "./db";
@@ -40,7 +40,6 @@ const Command = () => {
   const drivePath = getDriveRootPath();
   const [isFetching, setIsFetching] = useState(true);
   const [searchText, setSearchText] = useState("");
-  const [debouncedSearchText] = useDebounce(searchText, 100);
   const [files, setFiles] = useState<{
     filtered: Array<FileInfo>;
     favorites: Array<FileInfo>;
@@ -106,12 +105,12 @@ const Command = () => {
       setIsFetching(true);
       setFiles((prevFiles) => ({
         ...prevFiles,
-        filtered: queryFiles(db, debouncedSearchText),
-        favorites: isEmpty(debouncedSearchText) ? queryFavoriteFiles(db) : prevFiles.favorites,
+        filtered: queryFiles(db, searchText),
+        favorites: isEmpty(searchText) ? queryFavoriteFiles(db) : prevFiles.favorites,
       }));
       setIsFetching(false);
     })();
-  }, [debouncedSearchText]);
+  }, [searchText]);
 
   const findFile = (displayPath?: string): FileInfo | null =>
     (displayPath && files.filtered.find((file) => file.displayPath === displayPath)) || null;
@@ -151,10 +150,10 @@ const Command = () => {
       setFiles((prevFiles) => ({
         ...prevFiles,
         filtered: prevFiles.filtered.map((f) => (f.path === file.path ? updatedFile : f)),
-        favorites: isEmpty(debouncedSearchText) ? queryFavoriteFiles(db) : prevFiles.favorites,
+        favorites: isEmpty(searchText) ? queryFavoriteFiles(db) : prevFiles.favorites,
       }));
     },
-    [db, setFiles, debouncedSearchText]
+    [db, setFiles, searchText]
   );
 
   const handleSelectionChange = useDebouncedCallback((file: FileInfo | null) => {
@@ -173,11 +172,12 @@ const Command = () => {
         onSearchTextChange={setSearchText}
         searchBarPlaceholder={`Fuzzy search in ${displayPath(drivePath)}`}
         isLoading={isFetching}
+        throttle={true}
         onSelectionChange={(id) => handleSelectionChange(findFile(id?.replace(/__.+__/, "")))}
       >
         {files.filtered.length > 0 ? (
           <>
-            {isEmpty(debouncedSearchText) && files.favorites.length > 0 ? (
+            {isEmpty(searchText) && files.favorites.length > 0 ? (
               <List.Section title="Favorites">
                 {files.favorites.map((file) => (
                   <ListItem idPrefix="__fav__" key={file.displayPath} file={file} />
@@ -185,11 +185,9 @@ const Command = () => {
               </List.Section>
             ) : null}
             <List.Section
-              title={isEmpty(debouncedSearchText) ? "Recent" : "Results"}
+              title={isEmpty(searchText) ? "Recent" : "Results"}
               subtitle={
-                isEmpty(debouncedSearchText) && filesIndexGeneratedAt
-                  ? `Indexed: ${filesIndexGeneratedAt.toLocaleString()}`
-                  : ""
+                isEmpty(searchText) && filesIndexGeneratedAt ? `Indexed: ${filesIndexGeneratedAt.toLocaleString()}` : ""
               }
             >
               {files.filtered.map((file) => (
